@@ -277,7 +277,7 @@ const ART = {
     <path d="M-24 -26 q12 -14 24 -2 q12 -14 24 2 q-12 -6 -24 6 q-12 -12 -24 -6z" fill="#e8590c"/>
     <text y="24" font-size="32" fill="#2c3a94" text-anchor="middle">UDO</text></g></svg>`,
 };
-/* made real versions of the stickers from PROMPTS.md? list them here and they replace the drawn ones, e.g. key: 'assets/stickers/keyaster.png' */
+/* to swap a drawn sticker for an image later, list it here, e.g. key: 'assets/stickers/keyaster.png' */
 const STICKER_ART = {};
 const STK = { key: [192, -6, .02, .02], brk: [210, 4, .14, .6], ety: [270, -3, .34, .02], lkm: [330, 2, .5, .6], udo: [212, -7, .78, .04] };
 const desk = $('deskView');
@@ -296,23 +296,24 @@ PROJECTS.forEach((p, i) => {
   a.style.setProperty('--w', w + 'px'); a.style.setProperty('--r', r + 'deg'); a.style.left = (fx * 100) + '%'; a.style.top = (fy * 100) + '%'; a.style.zIndex = ++topZ;
   a.innerHTML = STICKER_ART[p.id] ? `<img src="${STICKER_ART[p.id]}" alt="" draggable="false" style="display:block;width:100%;height:auto">` : (ART[p.id] || ART.ety)(); a.setAttribute('aria-label', `${p.name}: ${p.tip} Opens in a new tab.`); a.title = p.name + ' — ' + p.tip;
   desk.appendChild(a);
-  let drag = null, down = null;
+  let drag = null, down = null, moved = false;
   const place = (cx, cy) => {
     const b = desk.getBoundingClientRect(), W = b.width, H = b.height;
     const x = Math.min(W - a.offsetWidth * .6, Math.max(-a.offsetWidth * .4, cx - b.left - drag.ox)), y = Math.min(H - a.offsetHeight * .5, Math.max(-a.offsetHeight * .3, cy - b.top - drag.oy));
     a.style.left = (x / W * 100) + '%'; a.style.top = (y / H * 100) + '%';
   };
-  a.addEventListener('pointerdown', e => { if (e.button || innerWidth <= 720) return; down = e; drag = null; });
+  a.addEventListener('pointerdown', e => { if (e.button || innerWidth <= 720) return; down = e; drag = null; moved = false; });
   a.addEventListener('pointermove', e => {
     if (!down) return;
     if (!drag && Math.abs(e.clientX - down.clientX) + Math.abs(e.clientY - down.clientY) > 5) {
-      const b = a.getBoundingClientRect(); drag = { ox: down.clientX - b.left, oy: down.clientY - b.top }; a.classList.add('lifted'); a.style.zIndex = ++topZ; try { a.setPointerCapture(e.pointerId); } catch (_) {}
+      const b = a.getBoundingClientRect(); moved = true; drag = { ox: down.clientX - b.left, oy: down.clientY - b.top }; a.classList.add('lifted'); a.style.zIndex = ++topZ; try { a.setPointerCapture(e.pointerId); } catch (_) {}
     }
     if (drag) { e.preventDefault(); place(e.clientX, e.clientY); }
   });
-  const end = () => { down = null; if (drag) { a.classList.remove('lifted'); a.dataset.moved = '1'; setTimeout(() => delete a.dataset.moved, 50); } drag = null; };
+  const end = () => { down = null; if (drag) a.classList.remove('lifted'); drag = null; };
   a.addEventListener('pointerup', end); a.addEventListener('pointercancel', end);
-  a.addEventListener('click', e => { if (a.dataset.moved) e.preventDefault(); });   // a plain click opens it; a drag doesn't
+  a.addEventListener('click', e => { if (moved) { e.preventDefault(); e.stopPropagation(); moved = false; } });   // a plain click opens it; a drag never does
+  a.addEventListener('dragstart', e => e.preventDefault());
 });
 /* polaroids: by day they fall into place under gravity and stay where you put them; by night they float */
 (function polaroids() {
@@ -323,13 +324,13 @@ PROJECTS.forEach((p, i) => {
   const put = p => { p.el.style.setProperty('--dx', p.x.toFixed(1) + 'px'); p.el.style.setProperty('--dy', p.y.toFixed(1) + 'px'); p.el.style.setProperty('--dr', p.r.toFixed(2) + 'deg'); };
   function step(now) {
     raf = 0; if (!on || !live()) return;
-    const dt = Math.min(.04, (now - (last || now)) / 1000); last = now; const night = darkNow(), T = now / 1000;
+    const dt = Math.min(.07, (now - (last || now)) / 1000); last = now; const night = darkNow(), T = now / 1000;
     for (const p of P) {
       if (p.held) { put(p); continue; }
-      if (night) {                                            // zero gravity: a slow drift, a weak pull home, a lazy spin
-        p.vx += (-p.x * .25 + Math.sin(T * .31 + p.i * 1.7) * 6) * dt; p.vy += (-p.y * .25 + Math.cos(T * .27 + p.i * 2.3) * 6) * dt;
-        p.vr += (-p.r * .2 + Math.sin(T * .4 + p.i) * .4) * dt;
-        p.vx *= 1 - .25 * dt; p.vy *= 1 - .25 * dt; p.vr *= 1 - .3 * dt;
+      if (night) {                                            // space: weightless bobbing, a slow tumble, and a soft gravity well at each one's spot
+        const gx = Math.sin(T * .33 + p.i * 1.7) * 26, gy = Math.cos(T * .27 + p.i * 2.3) * 30 - 10, gr = Math.sin(T * .22 + p.i * .9) * 7;
+        p.vx += ((gx - p.x) * .9) * dt; p.vy += ((gy - p.y) * .9) * dt; p.vr += ((gr - p.r) * .8) * dt;
+        p.vx *= 1 - .55 * dt; p.vy *= 1 - .55 * dt; p.vr *= 1 - .6 * dt;
       } else if (!p.placed) {                                 // gravity: fall, bounce once or twice, settle
         if (T < p.start) { p.y = -720; p.el.style.visibility = 'hidden'; put(p); continue; }
         p.el.style.visibility = '';
@@ -349,11 +350,13 @@ PROJECTS.forEach((p, i) => {
   if (live()) P.forEach(p => { put(p); p.el.style.visibility = 'hidden'; });
   // drag any of them; at night a flick sends it drifting
   P.forEach(p => {
-    let sx, sy, hist = [];
+    let sx, sy, hist = [], dist = 0;
+    p.el.addEventListener('click', () => { if (!live()) p.el.classList.toggle('flipped'); });   // phones: tap to flip
     p.el.addEventListener('pointerdown', e => { if (e.button || !live()) return; e.preventDefault(); p.held = true; p.placed = true; p.el.classList.add('held'); p.el.style.zIndex = 30 + p.i;
-      sx = e.clientX - p.x; sy = e.clientY - p.y; hist = [[e.clientX, e.clientY, performance.now()]]; p.el.setPointerCapture(e.pointerId); run(); });
-    p.el.addEventListener('pointermove', e => { if (!p.held) return; p.x = e.clientX - sx; p.y = e.clientY - sy; hist.push([e.clientX, e.clientY, performance.now()]); if (hist.length > 5) hist.shift(); });
+      sx = e.clientX - p.x; sy = e.clientY - p.y; dist = 0; p.ox0 = e.clientX; p.oy0 = e.clientY; hist = [[e.clientX, e.clientY, performance.now()]]; p.el.setPointerCapture(e.pointerId); run(); });
+    p.el.addEventListener('pointermove', e => { if (!p.held) return; dist = Math.max(dist, Math.hypot(e.clientX - p.ox0, e.clientY - p.oy0)); p.x = e.clientX - sx; p.y = e.clientY - sy; hist.push([e.clientX, e.clientY, performance.now()]); if (hist.length > 5) hist.shift(); });
     const up = () => { if (!p.held) return; p.held = false; p.el.classList.remove('held');
+      if (dist < 5) { p.el.classList.toggle('flipped'); p.vr += darkNow() ? 30 : 0; return; }   // a tap flips it over
       const a = hist[0], b = hist[hist.length - 1], dt = (b[2] - a[2]) / 1000;
       if (darkNow() && dt > .01) { p.vx = (b[0] - a[0]) / dt * .5; p.vy = (b[1] - a[1]) / dt * .5; p.vr = (p.vx / 40); } else { p.vx = p.vy = p.vr = 0; } };
     p.el.addEventListener('pointerup', up); p.el.addEventListener('pointercancel', up);
@@ -465,11 +468,10 @@ function sizeSky() {
 }
 function drawSky(t) {
   sx.clearRect(0, 0, innerWidth, innerHeight);
-  const dk = darkNow();
+  const dk = darkNow(); if (!dk) return;
   for (const s of stars) {
     const a = RM ? s.max * .7 : s.max * Math.pow(.5 + .5 * Math.sin(t / 1000 * s.sp + s.ph), 2);
     if (dk) { sx.fillStyle = `rgba(255,255,255,${a.toFixed(3)})`; sx.beginPath(); sx.arc(s.x, s.y, s.r, 0, 6.283); sx.fill(); }
-    else { sx.strokeStyle = `rgba(70,70,78,${a.toFixed(3)})`; sx.lineWidth = .75; sx.lineCap = 'round'; sx.beginPath(); for (const [dx, dy, w] of s.strokes) { sx.moveTo(s.x - dx, s.y - dy + w); sx.lineTo(s.x + dx, s.y + dy - w); } sx.stroke(); }
   }
 }
 
@@ -512,8 +514,8 @@ function drawTrail(dt) {
   pts.forEach(p => p.life -= dt * (dk ? .9 : 1.1)); pts = pts.filter(p => p.life > 0);
   if (dk) {
     tx.lineWidth = .7;
-    for (let i = 1; i < pts.length; i++) { const a = pts[i - 1], b = pts[i]; const [ir, ig, ib] = INK ? INK.rgb : [147, 166, 255]; tx.strokeStyle = `rgba(${ir},${ig},${ib},${(Math.min(a.life, b.life) * (INK ? .4 : .22)).toFixed(3)})`; tx.beginPath(); tx.moveTo(a.x, a.y); tx.lineTo(b.x, b.y); tx.stroke(); }
-    for (const p of pts) { const [ir, ig, ib] = INK ? INK.rgb : [147, 166, 255]; tx.fillStyle = `rgba(${ir},${ig},${ib},${(p.life * (INK ? .7 : .4)).toFixed(3)})`; tx.beginPath(); tx.arc(p.x, p.y, p.r, 0, 6.283); tx.fill(); }
+    for (let i = 1; i < pts.length; i++) { const a = pts[i - 1], b = pts[i]; tx.strokeStyle = `rgba(147,166,255,${(Math.min(a.life, b.life) * .22).toFixed(3)})`; tx.beginPath(); tx.moveTo(a.x, a.y); tx.lineTo(b.x, b.y); tx.stroke(); }
+    for (const p of pts) { tx.fillStyle = `rgba(147,166,255,${(p.life * .4).toFixed(3)})`; tx.beginPath(); tx.arc(p.x, p.y, p.r, 0, 6.283); tx.fill(); }
   } else {
     tx.lineCap = 'round'; tx.lineJoin = 'round';
     for (const off of [0, .7]) for (let i = 1; i < pts.length; i++) {
@@ -545,11 +547,12 @@ sizeSky();
 
 
 let tLast = performance.now();
-function startLoop(fn) { const loop = t => { const dt = Math.min((t - tLast) / 1000, .1); tLast = t; drawSky(t); drawTrail(dt); drawOrbit(dt); fn && fn(dt); requestAnimationFrame(loop); }; requestAnimationFrame(loop); }
-if (!window.THREE) { paintMode(); startLoop(); return; }
+(function flat(t) { const dt = Math.min((t - tLast) / 1000, .1) || 0; tLast = t; try { drawSky(t); drawTrail(dt); drawOrbit(dt); } catch (e) {} requestAnimationFrame(flat); })(performance.now());
+function startLoop(fn) { if (!fn) return; let dead = false; const loop = () => { if (dead) return; try { fn(); } catch (e) { dead = true; $('stage').style.display = 'none'; return; } requestAnimationFrame(loop); }; requestAnimationFrame(loop); }
+if (!window.THREE) { paintMode(); return; }
 let renderer;
 try { renderer = new THREE.WebGLRenderer({ canvas: $('stage'), antialias: true, alpha: true }); }
-catch (e) { paintMode(); startLoop(); return; }
+catch (e) { paintMode(); return; }
 renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.5));
 renderer.setClearColor(0x000000, 0);
 renderer.outputEncoding = THREE.sRGBEncoding;

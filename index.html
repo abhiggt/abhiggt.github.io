@@ -17,12 +17,19 @@
 <meta name="twitter:site" content="@abhiggt">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <script>
-/* Day 06:30–18:30 in India is light, the rest is dark. The toggle overrides for this visit. */
+/* Light from sunrise to sunset in Delhi, dark after. Sun times are worked out for today's date (NOAA formula). The toggle overrides for this visit. */
 (function () {
-  var p = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date()).split(':');
-  var mins = +p[0] * 60 + +p[1], pick = null;
+  var now = new Date(), ist = new Date(now.getTime() + (330 + now.getTimezoneOffset()) * 6e4);
+  var mins = ist.getHours() * 60 + ist.getMinutes(), pick = null;
+  var n = Math.floor((Date.UTC(ist.getFullYear(), ist.getMonth(), ist.getDate()) - Date.UTC(ist.getFullYear(), 0, 0)) / 864e5);
+  var g = 2 * Math.PI / 365 * (n - 1), r = Math.PI / 180, lat = 28.6139 * r, lon = 77.209;
+  var eq = 229.18 * (.000075 + .001868 * Math.cos(g) - .032077 * Math.sin(g) - .014615 * Math.cos(2 * g) - .040849 * Math.sin(2 * g));
+  var dec = .006918 - .399912 * Math.cos(g) + .070257 * Math.sin(g) - .006758 * Math.cos(2 * g) + .000907 * Math.sin(2 * g) - .002697 * Math.cos(3 * g) + .00148 * Math.sin(3 * g);
+  var ha = Math.acos(Math.cos(90.833 * r) / (Math.cos(lat) * Math.cos(dec)) - Math.tan(lat) * Math.tan(dec)) / r;
+  var rise = 720 - 4 * (lon + ha) - eq + 330, set = 720 - 4 * (lon - ha) - eq + 330;
+  window.__sun = { rise: rise, set: set };
   try { pick = sessionStorage.getItem('abhiggt-mode'); } catch (e) {}
-  document.documentElement.dataset.theme = pick || (mins >= 390 && mins < 1110 ? 'light' : 'dark');
+  document.documentElement.dataset.theme = pick || (mins >= rise && mins < set ? 'light' : 'dark');
 })();
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -118,10 +125,10 @@
 
 <section class="snaps" aria-label="A few photos of me, and what I'm up to">
   <div class="polas" id="polas">
-    <figure class="pola" style="--r:-5deg"><img src="assets/photos/laugh.webp" alt="Abhijeet laughing, sitting on a yellow sofa" width="640" height="640" loading="lazy" decoding="async"><figcaption>laughing at my own joke</figcaption></figure>
-    <figure class="pola" style="--r:3deg"><img src="assets/photos/spirit.webp" alt="A painted astronaut sitting cross-legged in meditation" width="640" height="640" loading="lazy" decoding="async"><figcaption>inner peace, outer space</figcaption></figure>
-    <figure class="pola" style="--r:-2deg"><img src="assets/photos/slides.webp" alt="Abhijeet working on a slide that says Real or AI?" width="640" height="640" loading="lazy" decoding="async"><figcaption>slide 47 of 12</figcaption></figure>
-    <figure class="pola wide" style="--r:4deg"><img src="assets/photos/google.webp" alt="Abhijeet standing beside the Google logo in an office lobby" width="853" height="640" loading="lazy" decoding="async"><figcaption>googled myself, IRL</figcaption></figure>
+    <figure class="pola" style="--r:-5deg"><div class="card"><div class="face front"><img src="assets/photos/laugh.webp" alt="Abhijeet laughing, sitting on a yellow sofa" width="640" height="640" loading="lazy" decoding="async"><figcaption>laughing at my own joke</figcaption></div><div class="face back"><p>the joke wasn't even that good</p><small>— a.</small></div></div></figure>
+    <figure class="pola" style="--r:3deg"><div class="card"><div class="face front"><img src="assets/photos/spirit.webp" alt="A painted astronaut sitting cross-legged in meditation" width="640" height="640" loading="lazy" decoding="async"><figcaption>inner peace, outer space</figcaption></div><div class="face back"><p>this is me on the inside</p><small>— a.</small></div></div></figure>
+    <figure class="pola" style="--r:-2deg"><div class="card"><div class="face front"><img src="assets/photos/slides.webp" alt="Abhijeet working on a slide that says Real or AI?" width="640" height="640" loading="lazy" decoding="async"><figcaption>slide 47 of 12</figcaption></div><div class="face back"><p>it was real. probably.</p><small>— a.</small></div></div></figure>
+    <figure class="pola wide" style="--r:4deg"><div class="card"><div class="face front"><img src="assets/photos/google.webp" alt="Abhijeet standing beside the Google logo in an office lobby" width="853" height="640" loading="lazy" decoding="async"><figcaption>googled myself, IRL</figcaption></div><div class="face back"><p>they let me leave. eventually.</p><small>— a.</small></div></div></figure>
   </div>
   <p class="now"><i aria-hidden="true"></i><b>now</b><span>designing and marketing at an early-stage AI startup, building the next side quest, and learning a new song on the guitar.</span></p>
 </section>
