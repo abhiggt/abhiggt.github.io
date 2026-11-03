@@ -549,10 +549,12 @@ sizeSky();
 let tLast = performance.now();
 (function flat(t) { const dt = Math.min((t - tLast) / 1000, .1) || 0; tLast = t; try { drawSky(t); drawTrail(dt); drawOrbit(dt); } catch (e) {} requestAnimationFrame(flat); })(performance.now());
 function startLoop(fn) { if (!fn) return; let dead = false; const loop = () => { if (dead) return; try { fn(); } catch (e) { dead = true; $('stage').style.display = 'none'; return; } requestAnimationFrame(loop); }; requestAnimationFrame(loop); }
-if (!window.THREE) { paintMode(); return; }
+/* phones (and anything without WebGL) get the lite version: no 3D layer over the text, a CSS paper sheet in the hero, the starry sky stays */
+const LITE = innerWidth <= 760 || (matchMedia('(pointer: coarse)').matches && innerWidth < 1000);
+if (!window.THREE || LITE) { root.classList.add('lite'); paintMode(); return; }
 let renderer;
 try { renderer = new THREE.WebGLRenderer({ canvas: $('stage'), antialias: true, alpha: true }); }
-catch (e) { paintMode(); return; }
+catch (e) { root.classList.add('lite'); paintMode(); return; }
 renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.5));
 renderer.setClearColor(0x000000, 0);
 renderer.outputEncoding = THREE.sRGBEncoding;
