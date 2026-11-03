@@ -1,0 +1,20 @@
+# OS clutter
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# editors
+.vscode/
+.idea/
+*.swp
+
+# local tooling
+node_modules/
+.env
+*.log
+
+# downloads and exports that shouldn't ship
+*.zip
+*.psd
+*.fig
+*.ai
